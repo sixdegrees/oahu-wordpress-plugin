@@ -19,7 +19,7 @@ Then head over to the "Install Plugins" page on your wp-admin :
 
 and upload the zip from there.
 
-or simply unzip it or clone the repo under `wp-content/plugins`.
+Alternatively, you can simply unzip it or clone the repo under `wp-content/plugins`.
 
 ## Setup
 
