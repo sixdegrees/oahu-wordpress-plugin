@@ -222,16 +222,15 @@ function oahu_save_article($post_id) {
 
 // Helper functions
 
-function oahu_comments_widget($post_id) {
+function oahu_comments_widget($post_id, $options=array()) {
   $oahu_id = get_post_meta($post_id, 'oahu_id', true);
-  oahu_widget("comments", array("id" => $oahu_id));
+  oahu_widget("comments", array_merge($options, array("id" => $oahu_id)));
 }
 
 function oahu_reviews_widget($post_id, $options=array()) {
   $oahu_id = get_post_meta($post_id, 'oahu_id', true);
   oahu_widget("reviews", array_merge($options, array("id" => $oahu_id)));
 }
-
 
 
 function oahu_widget($name, $options=array(), $tagName = "div", $placeholder="") {
