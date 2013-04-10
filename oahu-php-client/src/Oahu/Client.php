@@ -43,9 +43,6 @@ class Oahu_Client {
 
     $this->connection  = new Oahu_Connection($config);
 
-    if (isset($o_config['fb']) && $o_config['fb']['appId'] ) {
-      $this->facebook = new Oahu_Facebook($o_config['fb']);
-    }
 
     if (isset($config['noHttpCache'])){
      $this->noHttpCache = $config['noHttpCache'];

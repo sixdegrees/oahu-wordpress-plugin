@@ -8,30 +8,46 @@ Plugin Name: Oahu
 Plugin URI: http://github.com/sixdegrees/oahu-wordpress-plugin
 Description: Oahu integration with your Wordpress
 Author: Stephane Bellity
-Version: 0.1
+Version: 0.1.0
 Author URI: http://github.com/sixdegrees/oahu-wordpress-plugin
 */
 
+define('OAHU_VERSION', '0.1.0');
+define('OAHU_PLUGIN_URL', plugin_dir_url( __FILE__ ));
+
 require_once(plugin_dir_path(__FILE__) . 'oahu-php-client/src/Oahu/Client.php');
 
+wp_register_script('oahu.js', "//" . get_option('oahu_host') . "/assets/oahu.js", array('jquery'), false, false);
+wp_register_script('oahu-apps.js', "//" . get_option('oahu_host') . "/assets/oahu-apps.js", array('jquery', 'oahu.js'), false, false);
+wp_register_script('oahu-init.js', OAHU_PLUGIN_URL . 'oahu-init.js', array('jquery', 'oahu-apps.js'), OAHU_VERSION, true);
+
 function oahu_init() {
-
-  echo "<script type='text/javascript'>
-    if (typeof window['jQuery'] == 'undefined') {
-      var _jqTag = unescape('%3Cscript src=\"//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js\" type=\"text/javascript\"%3E%3C/script%3E');
-      document.write(_jqTag);
-    }</script>";
-
-  echo "<script src='//" . get_option('oahu_host') . "/assets/oahu.js'></script>";
-  echo "<script src='//" . get_option('oahu_host') . "/assets/oahu-apps.js'></script>";
-  echo "<script>$(function() { Oahu.init({ 
-    appId: '" .   get_option('oahu_app_id') . "',
-    debug: " .    get_option('oahu_debug') . ",
-    verbose: " .  get_option('oahu_debug') . ",
-  }, function() { console.warn('Oahu init ok'); }); });</script>";
+  wp_enqueue_script('oahu.js');
+  wp_enqueue_script('oahu-apps.js');
+  wp_enqueue_script('oahu-init.js');
 }
 
-add_action('wp_head', 'oahu_init');
+function oahu_init_config() {
+  $oahu_config = array(
+    'appId'   => get_option('oahu_app_id'),
+    'debug'   => get_option('oahu_debug'),
+    'verbose' => get_option('oahu_debug')
+  );
+  if (get_option('oahu_fb_app_id')) {
+    $oahu_config['facebook'] = array(
+      'appId'   => get_option('oahu_fb_app_id'),
+      'xfbml'   => true, 
+      'cookie'  => true,
+      'frictionlessRequests' => true
+    );
+  }
+  echo "<script type='text/javascript'>window.OahuConfig = " . json_encode($oahu_config) .";</script>";
+}
+
+add_action( 'wp_head', 'oahu_init_config' );
+add_action( 'wp_enqueue_scripts', 'oahu_init' );
+  
+// add_action('wp_head', 'oahu_init');
 
 // Auto load hbs templates
 add_action('wp_footer', 'oahu_include_templates');
@@ -42,27 +58,40 @@ function oahu_include_templates() {
 }
 
 function get_oahu_client() {
-  return new Oahu_Client(array(
-    'oahu' => array(
-      'host'        => get_option('oahu_host'),
-      'clientId'    => get_option('oahu_client_id'),
-      'appId'       => get_option('oahu_app_id'),
-      'appSecret'   => get_option('oahu_app_secret')
-    )
-  ));
+  $config = array();
+  $config['oahu'] = array(
+    'host'        => get_option('oahu_host'),
+    'clientId'    => get_option('oahu_client_id'),
+    'appId'       => get_option('oahu_app_id'),
+    'appSecret'   => get_option('oahu_app_secret')
+  );
+  return new Oahu_Client($config);
 };
 
 function get_oahu_options() {
   return array(
-    'oahu_host'       => array('name' => 'Host', 'default' => 'app-staging.oahu.fr', 'autoload' => 'yes'), 
-    'oahu_client_id'  => array('name' => 'Client ID', 'default' => '', 'autoload' => 'no'), 
-    'oahu_app_id'     => array('name' => 'App ID', 'default' => '', 'autoload' => 'yes'),
-    'oahu_app_secret' => array('name' => 'App Secret', 'default' => '', 'autoload' => 'no'),
-    'oahu_debug'      => array('name' => 'Debug', 'default' => 'true', 'values' => array('true', 'false'),  'autoload' => 'no')
+    'oahu_host'           => array('name' => 'Host', 'default' => 'app-staging.oahu.fr', 'autoload' => 'yes'), 
+    'oahu_client_id'      => array('name' => 'Client ID', 'default' => '', 'autoload' => 'no'), 
+    'oahu_app_id'         => array('name' => 'App ID', 'default' => '', 'autoload' => 'yes'),
+    'oahu_app_secret'     => array('name' => 'App Secret', 'default' => '', 'autoload' => 'no'),
+    'oahu_debug'          => array('name' => 'Debug', 'default' => 'true', 'values' => array('true', 'false'),  'autoload' => 'no', 'type' => 'select')
   );
 }
 
 foreach(get_oahu_options() as $key => $opt) {
+  add_option($key, $opt['default'], "", $opt['autoload']);
+  if (isset($_POST[$key])) {
+    update_option($key, $_POST[$key]);
+  }
+}
+
+function get_oahu_fb_options() {
+  return array(
+    'oahu_fb_app_id'      => array('name' => 'App ID', 'default' => '', 'autoload' => 'yes'),
+  );
+}
+
+foreach(get_oahu_fb_options() as $key => $opt) {
   add_option($key, $opt['default'], "", $opt['autoload']);
   if (isset($_POST[$key])) {
     update_option($key, $_POST[$key]);
@@ -79,14 +108,19 @@ function oahu_plugin_menu() {
 }
 
 function oahu_plugin_options() {
+  oahu_render_plugin_options("Oahu Config", get_oahu_options());
+  oahu_render_plugin_options("Facebook Config", get_oahu_fb_options(), 'Configure your facebook appId if you want to have access to FB on the client side.');
+}
+
+function oahu_render_plugin_options($sectionName, $optsList, $hint='') {
   if ( !current_user_can( 'manage_options' ) )  {
     wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
   }
   echo '<form name="oahu_options_form" method="post" action="">';
-  echo '<h1>Oahu Config</h1>';
-  echo '<p>templates dir : ' . get_template_directory() . '</p>';
+  echo '<h1>' . $sectionName . '</h1>';
+  echo '<p>' . $hint . '</p>';
   echo '<table class="form-table"><tbody>';
-  foreach(get_oahu_options() as $key => $opt) {
+  foreach($optsList as $key => $opt) {
     $val = get_option($key);
     echo '<tr><th scope="row">' . $opt['name'] . '</th><td>';
     if (isset($opt['values'])) {
@@ -101,8 +135,16 @@ function oahu_plugin_options() {
         echo '<option ' . $selected . '>' . $v . '</option>';
       }
       echo '</select>';
+    } elseif (isset($opt['type']) && $opt['type'] == 'textarea') {
+      echo '<textarea name="' . $key . '">' . $val .'</textarea>';
     } else {
-      echo '<input type="text" name="' . $key . '" value="' . $val . '" size="36">';  
+      echo '<input type="text" name="' . $key . '" value="' . $val . '" size="36">';
+      if (strlen($opt['default']) > 0) {
+        echo '<p><strong>default:</strong> ' . $opt['default'] . '</p>';
+      }
+    }
+    if (strlen($opt['hint']) > 0) {
+      echo '<p>' . $opt['hint'] . '</p>';
     }
     echo '</td></tr>';
   }
@@ -129,6 +171,7 @@ function oahu_add_custom_box() {
 
 function oahu_meta_box($post) {
   $oahu_id = get_post_meta($post->ID, 'oahu_id', true);
+  echo "<strong>OahuID</strong> " . $oahu_id;
 }
 
 
@@ -183,6 +226,12 @@ function oahu_comments_widget($post_id) {
   $oahu_id = get_post_meta($post_id, 'oahu_id', true);
   oahu_widget("comments", array("id" => $oahu_id));
 }
+
+function oahu_reviews_widget($post_id, $options=array()) {
+  $oahu_id = get_post_meta($post_id, 'oahu_id', true);
+  oahu_widget("reviews", array_merge($options, array("id" => $oahu_id)));
+}
+
 
 
 function oahu_widget($name, $options=array(), $tagName = "div", $placeholder="") {
