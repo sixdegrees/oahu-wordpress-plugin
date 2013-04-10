@@ -4,9 +4,8 @@ This plugin allows an easy integration of Oahu in your Wordpress blog.
 
 ## What does it do ?
 
-* All Posts are automatically referenced as Entities in your Oahu App.
-* OahuJS is automatically loaded.
-* Oahu.init is automatically configured and called on page load.
+* All Posts are automatically referenced in your Oahu App.
+* OahuJS is automatically configured and initialized
 * The Widgets and Templates defined in your Wordpress Theme are automatically loaded.
 
 
@@ -28,8 +27,23 @@ The admin Panel is under Settings > Oahu
 
 ## Creating and using Widgets in your Theme
 
-You can create widgets in individual javascript files inside your Theme, under 'oahu/widgets'
-and templates under 'oahu/templates'.
+You can create widgets in individual javascript files inside your Theme.
+
+
+Theme structure:
+
+    wp-content
+    └── themes
+        └── my_theme
+            ├── home.php
+            ├── index.php
+            ├── oahu
+            │   ├── templates
+            │   │   └── my_widget.hbs
+            │   └── widgets
+            │       └── my_widget.js
+            ├── page.php
+            └── single.php
 
 Example: 
 
